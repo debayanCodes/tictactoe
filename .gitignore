@@ -1,0 +1,5 @@
+# Local Netlify folder
+.netlify
+
+# scripts.js Backup
+scripts.js.bak

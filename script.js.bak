@@ -1,0 +1,129 @@
+
+let backendUrl = 'http://127.0.0.1:5000';
+let players = ["", ""];
+let currentPlayer = 0;
+let sign = 'X';
+let gameActive = false;
+let toss = 0;
+
+// Handle fetch errors
+async function safeFetch(url, options = {}) {
+    try {
+        const response = await fetch(url, {
+            ...options,
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        });
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return await response.json();
+    } catch (error) {
+        console.error('API Error:', error);
+        alert('Server error. Please make sure the backend is running and refresh the page.');
+        throw error;
+    }
+}
+
+function renderBoard(board = [[' ', ' ', ' '], [' ', ' ', ' '], [' ', ' ', ' ']]) {
+    const boardDiv = document.getElementById('board');
+    boardDiv.innerHTML = '';
+    for (let i = 0; i < 3; i++) {
+        for (let j = 0; j < 3; j++) {
+            const cell = document.createElement('div');
+            cell.className = 'cell';
+            cell.dataset.row = i;
+            cell.dataset.col = j;
+            cell.textContent = board[i][j];
+            cell.addEventListener('click', onCellClick);
+            boardDiv.appendChild(cell);
+        }
+    }
+}
+
+async function updateState() {
+    try {
+        const data = await safeFetch(`${backendUrl}/state`);
+            renderBoard(data.board);
+            players = data.players;
+            currentPlayer = data.current;
+            sign = data.sign;
+            toss = data.toss;
+            gameActive = data.active;
+            if (data.winner) {
+                document.getElementById('result').textContent = `${data.winner} wins!! Thanks for playing!!`;
+                document.getElementById('gameInfo').textContent = '';
+                document.getElementById('resetBtn').style.display = 'inline-block';
+            } else if (data.draw) {
+                document.getElementById('result').textContent = `Draw!! Thanks for playing!!`;
+                document.getElementById('gameInfo').textContent = '';
+                document.getElementById('resetBtn').style.display = 'inline-block';
+            } else if (gameActive) {
+                document.getElementById('gameInfo').textContent = `${players[currentPlayer]}'s turn (${sign})`;
+                document.getElementById('result').textContent = '';
+                document.getElementById('resetBtn').style.display = 'none';
+            }
+        });
+}
+
+async function onCellClick(e) {
+    if (!gameActive) return;
+    const row = parseInt(e.target.dataset.row);
+    const col = parseInt(e.target.dataset.col);
+    try {
+        const data = await safeFetch(`${backendUrl}/move`, {
+            method: 'POST',
+            body: JSON.stringify({ row, col })
+        });
+        .then(res => res.json())
+        .then(data => {
+            if (data.error) {
+                alert(data.error);
+                return;
+            }
+            updateState();
+        });
+}
+
+async function startGame() {
+    try {
+        const p1 = document.getElementById('player1').value.trim() || 'Player 1';
+        const p2 = document.getElementById('player2').value.trim() || 'Player 2';
+        const data = await safeFetch(`${backendUrl}/start`, {
+            method: 'POST',
+            body: JSON.stringify({ player1: p1, player2: p2 })
+        });
+        .then(res => res.json())
+        .then(data => {
+            players = data.players;
+            currentPlayer = data.current;
+            sign = data.sign;
+            toss = data.toss;
+            gameActive = data.active;
+            renderBoard(data.board);
+            document.getElementById('result').textContent = '';
+            document.getElementById('resetBtn').style.display = 'none';
+            document.querySelector('.player-inputs').style.display = 'none';
+            document.getElementById('gameInfo').textContent = `${players[currentPlayer]} won the toss, plays first with X`;
+            setTimeout(() => {
+                document.getElementById('gameInfo').textContent = `${players[currentPlayer]}'s turn (${sign})`;
+            }, 2000);
+        });
+}
+
+function resetGame() {
+    document.querySelector('.player-inputs').style.display = 'block';
+    document.getElementById('result').textContent = '';
+    document.getElementById('gameInfo').textContent = '';
+    document.getElementById('resetBtn').style.display = 'none';
+    renderBoard();
+}
+
+document.getElementById('startBtn').addEventListener('click', startGame);
+document.getElementById('resetBtn').addEventListener('click', resetGame);
+
+// Initial render
+renderBoard();

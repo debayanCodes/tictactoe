@@ -1,0 +1,13 @@
+{
+  "name": "tic-tac-toe-netlify",
+  "version": "1.0.0",
+  "description": "Tic Tac Toe game with Netlify Functions",
+  "main": "index.html",
+  "scripts": {
+    "dev": "netlify dev"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "netlify-cli": "^12.0.0"
+  }
+}
